@@ -20,7 +20,7 @@
 
 ## how to use
 
-- assign keyboard shortcuts
+- assign keyboard shortcuts for each command.
 
 ## support
 
