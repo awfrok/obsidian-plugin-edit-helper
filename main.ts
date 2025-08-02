@@ -15,19 +15,39 @@ export default class EditHelperPlugin extends Plugin {
 		this.addCommand({
 			id: 'empty-current-line',
 			name: 'Empty current line',
-			hotkeys: [{	modifiers: ['Mod', 'Shift'], key: 'Backspace' }],
+			hotkeys: [
+				{
+					modifiers: ['Mod', 'Shift'],
+					key: 'Backspace'
+				}
+			],
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				const cursor = editor.getCursor();
-				const currentLine = cursor.line;
-				
-				// Replace the line's content with an empty string.
-				editor.setLine(currentLine, '');
-				
-				// Move the cursor to the beginning of the now-empty line.
-				editor.setCursor({ line: currentLine, ch: 0 });
+				const currentLineNumber = cursor.line;
+				const lineContent = editor.getLine(currentLineNumber);
+
+				// Regex to find leading whitespace and a list marker (e.g., "- ", "* ", "1. ")
+				const listMatch = lineContent.match(/^\s*([-*]|\d+\.)\s+/);
+
+				if (listMatch) {
+					const bullet = listMatch[0];
+					// Check if the line content is just the bullet (and whitespace).
+					if (lineContent.trim() === bullet.trim()) {
+						// If it's just a bullet, do nothing.
+						return;
+					} else {
+						// If there's content, just empty the line after the bullet.
+						editor.setLine(currentLineNumber, bullet);
+						editor.setCursor({ line: currentLineNumber, ch: bullet.length });
+					}
+				} else {
+					// If it's not a list item, empty the entire line.
+					editor.setLine(currentLineNumber, '');
+					editor.setCursor({ line: currentLineNumber, ch: 0 });
+				}
 			}
 		});
-
+		
 		// 2. ADD COMMAND: Delete current line
 		// This command will delete the entire line where the cursor is currently placed.
 		this.addCommand({
