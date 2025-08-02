@@ -5,7 +5,6 @@
   "minAppVersion": "0.15.0",
   "description": "Adds commands for simple editing tasks like deleting or selecting the current line.",
   "author": "Kyoungdeuk",
-  "authorUrl": "https://your-website.com",
   "fundingUrul": "https://ko-fi.com/kydem",
   "license": "MIT",  
   "isDesktopOnly": false
