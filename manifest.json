@@ -1,11 +1,12 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+  "id": "obsidian-edit-helper",
+  "name": "Edit Helper",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.0",
+  "description": "Adds commands for simple editing tasks like deleting or selecting the current line.",
+  "author": "Kyoungdeuk",
+  "authorUrl": "https://your-website.com",
+  "fundingUrul": "https://ko-fi.com/kydem",
+  "license": "MIT",  
+  "isDesktopOnly": false
 }
