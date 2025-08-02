@@ -4,19 +4,19 @@
 
 ### empty current line content
 
-- this command leaves bullets or heading markers in the line.
+- Bullets or heading markers remain same in the line.
 
 ### clear current line
 
-- this command includes bullets and heading markers in the line.
+- bullets and heading markers are also removed.
 
 ### select current line content
 
-- this command select the content without bullets or heading markers in the line.
+- selects the content without bullets or heading markers in the line.
 
 ### delete current line 
 
-- this command moves the next line up.
+- removes the current line and moves up the next line.
 
 ## how to use
 
