@@ -10,7 +10,7 @@ export default class EditHelperPlugin extends Plugin {
     // This method is called when your plugin is loaded.
     async onload() {
 
-        // 1. ADD COMMAND: Empty current line
+        // 1. ADD COMMAND: Empty current line content
         // This command will replace the content of the current line with an empty string,
         // preserving list bullets or heading markers.
         this.addCommand({
