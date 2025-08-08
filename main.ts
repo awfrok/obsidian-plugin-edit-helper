@@ -1,6 +1,8 @@
 //
-// 0.1.0
-// git status: committed
+// 0.1.0 
+//
+// last commit: 0.1.0
+// initial commit
 //
 
 import { App, Editor, MarkdownView, Plugin } from 'obsidian';
