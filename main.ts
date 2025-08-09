@@ -1,14 +1,20 @@
 //
-// 0.1.0 
+// 0.1.1
+// add auto centering function
 //
 // last commit: 0.1.0
 // initial commit
 //
 
-import { App, Editor, MarkdownView, Plugin } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, debounce } from 'obsidian';
 
 export default class EditHelperPlugin extends Plugin {
 
+    idleTimeout: number | null = null;
+    autoCenterEnabled = true;
+    private readonly IDLE_TIMEOUT_MS = 10000;
+    private readonly DEBOUNCE_DELAY_MS = 500;
+    
     // This method is called when your plugin is loaded.
     async onload() {
 
@@ -133,9 +139,59 @@ export default class EditHelperPlugin extends Plugin {
                 }
             }
         });
+
+        // 5. ADD COMMAND: Toggle auto-center on idle
+        this.addCommand({
+            id: 'toggle-auto-center-on-idle',
+            name: 'Toggle auto-center on idle',
+            callback: () => {
+                this.autoCenterEnabled = !this.autoCenterEnabled;
+                new Notice(`Auto-centering on idle is now ${this.autoCenterEnabled ? 'ON' : 'OFF'}.`);
+                this.resetIdleTimer(); // Reset/clear the timer based on the new state
+            }
+        });
+
+        // We need to listen to events that indicate user activity to reset the timer.
+        this.registerEvent(this.app.workspace.on('editor-change', this.resetIdleTimer));
+        this.registerEvent(this.app.workspace.on('active-leaf-change', this.resetIdleTimer));
+        this.registerDomEvent(document, 'keydown', this.resetIdleTimer);
+        this.registerDomEvent(document, 'mousedown', this.resetIdleTimer);
+        // Debounce mousemove to avoid excessive timer resets while moving the mouse
+        this.registerDomEvent(document, 'mousemove', debounce(this.resetIdleTimer, this.DEBOUNCE_DELAY_MS, true));
+
+        // Start the timer when the plugin loads
+        this.resetIdleTimer();
     }
 
     // This method is called when your plugin is unloaded.
     onunload() {
+        if (this.idleTimeout) {
+            window.clearTimeout(this.idleTimeout);
+        }
     }
+
+    // This contains the logic to scroll the active line to the center of the view.
+    scrollActiveLineToCenter = () => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        // Only scroll if there is an active markdown view
+        if (view && view.editor) {
+            const editor = view.editor;
+            const cursor = editor.getCursor();
+            // scrollIntoView with the center option will vertically center the line
+            editor.scrollIntoView({ from: cursor, to: cursor }, true);
+        }
+    };
+
+    // This function resets the idle timer. It's called on user activity.
+    resetIdleTimer = () => {
+        if (this.idleTimeout) {
+            window.clearTimeout(this.idleTimeout);
+        }
+        // Only set a new timer if the feature is enabled.
+        if (this.autoCenterEnabled) {
+            this.idleTimeout = window.setTimeout(this.scrollActiveLineToCenter, this.IDLE_TIMEOUT_MS);
+        } else {
+            this.idleTimeout = null;
+        }
+    };
 }
