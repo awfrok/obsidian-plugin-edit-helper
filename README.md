@@ -18,6 +18,11 @@
 
 - removes the current line and moves up the next line.
 
+### auto-center the current curson location
+
+- scroll the editor to automatically center the cursor.
+- has toggle commnad.
+
 ## how to use
 
 - assign keyboard shortcuts for each command.
