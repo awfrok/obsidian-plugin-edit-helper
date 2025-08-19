@@ -8,7 +8,7 @@
 
 ### Clear current line for new format
 
-- removes the current line and moves up the next line.
+- clear all the data in the current line to beging a new format.
 
 ### select current line content
 
