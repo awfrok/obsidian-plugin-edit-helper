@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-edit-helper",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Adds commands for simple editing tasks like deleting or selecting the current line.",
 	"main": "main.js",
 	"scripts": {
