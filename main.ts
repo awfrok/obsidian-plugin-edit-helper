@@ -1,140 +1,142 @@
 //
-// 0.1.1
-// add auto centering function
-//
-// last commit: 0.1.0
-// initial commit
+// last commit: 0.1.2
+// removes 'delete current line' funcitonaliy that is the same with obsidian's 'delete paragraph.'
+// removes all the default hotkey. 
 //
 
-import { App, Editor, MarkdownView, Notice, Plugin, debounce } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, debounce, PluginSettingTab, Setting, Modifier } from 'obsidian';
+
+// --- INTERFACES AND DEFAULTS ---
+
+interface EditHelperPluginSettings {
+    idleTimeoutMs: number;
+}
+
+const DEFAULT_SETTINGS: EditHelperPluginSettings = {
+    idleTimeoutMs: 60000
+};
+
+// --- CONSTANTS AND CONFIGURATION ---
+
+const PLUGIN_CONSTANTS = {
+    DEBOUNCE_DELAY_MS: 500,
+    OUTLINER_MARKER_REGEX: /^\s*(#+\s|[-*]\s|\d+\.\s)/,
+    COMMANDS: {
+        EMPTY_CURRENT_LINE_CONTENT_EXCEPT_MARKER: {
+            id: 'empty-current-line-content-except-marker',
+            name: 'Empty current line content except marker',
+            //hotkeys: [{ modifiers: ['Mod', 'Shift'] as Modifier[], key: 'Backspace' }],
+        },
+        CLEAR_CURRENT_LINE_FOR_NEW_FORMAT: {
+            id: 'clear-current-line-for-new-format',
+            name: 'Clear current line for new format',
+            // hotkeys: [{ modifiers: ['Mod'], key: 'Backspace' }],
+        },
+        SELECT_OR_CANCEL: {
+            id: 'select-current-line-or-cancel',
+            name: 'Select line / Cancel selection',
+            //hotkeys: [{ modifiers: [] as Modifier[], key: 'Escape' }],
+        },
+        TOGGLE_AUTO_CENTER: {
+            id: 'toggle-auto-center-on-idle',
+            name: 'Toggle auto-center on idle',
+        }
+    },
+    NOTICES: {
+        AUTO_CENTER_TOGGLED: (enabled: boolean) => `Auto-centering on idle is now ${enabled ? 'ON' : 'OFF'}.`
+    },
+    SETTING_UI: {
+        MAIN_HEADING: 'Edit Helper Settings',
+        IDLE_TIMEOUT_NAME: 'Idle timeout for auto-centering',
+        IDLE_TIMEOUT_DESC: 'Set time in milliseconds to wait before centering the view on the active line.\n• To disable, set to 0.',
+        SLIDER_MIN: 0,
+        SLIDER_MAX: 60000,
+        SLIDER_STEP: 1000
+    }
+};
+
+
+// --- PLUGIN CLASS ---
 
 export default class EditHelperPlugin extends Plugin {
+    settings: EditHelperPluginSettings;
 
     idleTimeout: number | null = null;
     autoCenterEnabled = true;
-    private readonly IDLE_TIMEOUT_MS = 10000;
-    private readonly DEBOUNCE_DELAY_MS = 500;
     
     // This method is called when your plugin is loaded.
     async onload() {
+        await this.loadSettings();
+
+        this.addSettingTab(new EditHelperSettingTab(this.app, this));
 
         // 1. ADD COMMAND: Empty current line content
-        // This command will replace the content of the current line with an empty string,
-        // preserving list bullets or heading markers.
         this.addCommand({
-            id: 'empty-current-line-content',
-            name: 'Empty current line content',
-            hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'Backspace' }],
+            id: PLUGIN_CONSTANTS.COMMANDS.EMPTY_CURRENT_LINE_CONTENT_EXCEPT_MARKER.id,
+            name: PLUGIN_CONSTANTS.COMMANDS.EMPTY_CURRENT_LINE_CONTENT_EXCEPT_MARKER.name,
+            //hotkeys: PLUGIN_CONSTANTS.COMMANDS.EMPTY_CURRENT_LINE_CONTENT_EXCEPT_MARKER.hotkeys,
             editorCallback: (editor: Editor, view: MarkdownView) => {
                 const cursor = editor.getCursor();
                 const currentLineNumber = cursor.line;
                 const lineContent = editor.getLine(currentLineNumber);
 
-                // Regex to find leading whitespace and a heading or list marker (e.g., "# ", "- ", "1. ")
-                const markerMatch = lineContent.match(/^\s*(#+\s|[-*]\s|\d+\.\s)/);
+                const markerMatch = lineContent.match(PLUGIN_CONSTANTS.OUTLINER_MARKER_REGEX);
 
                 if (markerMatch) {
                     const marker = markerMatch[0];
-                    // Check if the line content is just the marker (and whitespace).
                     if (lineContent.trim() === marker.trim()) {
-                        // If it's just a marker, do nothing to avoid accidentally deleting it.
+                        // If it's just a marker, do nothing.
                         return;
                     } else {
-                        // If there's content, empty the line after the marker.
+                        // Empty the line after the marker.
                         editor.setLine(currentLineNumber, marker);
                         editor.setCursor({ line: currentLineNumber, ch: marker.length });
                     }
                 } else {
-                    // If it's not a list item or heading, empty the entire line.
+                    // If not a list/heading, empty the entire line.
                     editor.setLine(currentLineNumber, '');
                     editor.setCursor({ line: currentLineNumber, ch: 0 });
                 }
             }
         });
         
-        // 2. ADD COMMAND: Delete current line
-        // This command will delete the entire line where the cursor is currently placed.
+        // 3. ADD COMMAND: Clear current line
         this.addCommand({
-            id: 'delete-current-line',
-            name: 'Delete current line',
-            hotkeys: [{ modifiers: ['Alt', 'Shift'], key: 'Backspace' }],
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                const cursor = editor.getCursor();
-                const currentLine = cursor.line;
-
-                // This logic handles all cases, including deleting the first, middle, or last line.
-                // It works by getting all lines, removing the target line, and rejoining them.
-                const lines = editor.getValue().split('\n');
-                lines.splice(currentLine, 1);
-                const newValue = lines.join('\n');
-                editor.setValue(newValue);
-
-                // Reposition the cursor in a sensible location after deletion.
-                if (currentLine < lines.length) {
-                    // If not the last line, move cursor to the start of the next line.
-                    editor.setCursor({ line: currentLine, ch: 0 });
-                } else if (lines.length > 0) {
-                    // If the last line was deleted, move to the end of the new last line.
-                    const newLastLine = lines.length - 1;
-                    editor.setCursor({ line: newLastLine, ch: lines[newLastLine].length });
-                } else {
-                    // If the file is now empty, move to the start.
-                    editor.setCursor({ line: 0, ch: 0 });
-                }
-            }
-        });
-
-		// 3. ADD COMMAND: Clear current line
-        // This command will delete all content from the current line, leaving a blank line.
-        this.addCommand({
-            id: 'clear-current-line',
-            name: 'Clear current line',
-            //hotkeys: [{ modifiers: ['Mod'], key: 'Backspace' }],
+            id: PLUGIN_CONSTANTS.COMMANDS.CLEAR_CURRENT_LINE_FOR_NEW_FORMAT.id,
+            name: PLUGIN_CONSTANTS.COMMANDS.CLEAR_CURRENT_LINE_FOR_NEW_FORMAT.name,
+            // hotkeys: PLUGIN_CONSTANTS.COMMANDS.CLEAR_CURRENT_LINE_FOR_NEW_FORMAT.hotkeys,
             editorCallback: (editor: Editor, view: MarkdownView) => {
                 const cursor = editor.getCursor();
                 const currentLineNumber = cursor.line;
                 
-                // Set the line to an empty string, clearing all content.
                 editor.setLine(currentLineNumber, '');
-
-                // Move the cursor to the beginning of the now-empty line.
                 editor.setCursor({ line: currentLineNumber, ch: 0 });
             }
         });
 
         // 4. ADD COMMAND: Select line or cancel selection
-        // This command will select the line's content (ignoring markers), or if a selection
-        // already exists, it will cancel it.
         this.addCommand({
-            id: 'select-current-line-or-cancel',
-            name: 'Select line / Cancel selection',
-            hotkeys: [{modifiers: [], key: 'Escape'}],
+            id: PLUGIN_CONSTANTS.COMMANDS.SELECT_OR_CANCEL.id,
+            name: PLUGIN_CONSTANTS.COMMANDS.SELECT_OR_CANCEL.name,
+            //hotkeys: PLUGIN_CONSTANTS.COMMANDS.SELECT_OR_CANCEL.hotkeys,
             editorCallback: (editor: Editor, view: MarkdownView) => {
-                // Check if there is already a selection in the editor.
                 if (editor.somethingSelected()) {
-                    // If a selection exists, cancel it by moving the cursor to the end of the selection.
-                    const selectionEnd = editor.getCursor('to'); // 'to' gets the end of the selection
+                    const selectionEnd = editor.getCursor('to');
                     editor.setCursor(selectionEnd);
                 } else {
-                    // If there is no selection, proceed with selecting the line content.
                     const cursor = editor.getCursor();
                     const currentLine = cursor.line;
                     const lineContent = editor.getLine(currentLine);
 
-                    // Regex to find leading whitespace and a heading or list marker (e.g., "# ", "- ", "1. ")
-                    const markerMatch = lineContent.match(/^\s*(#+\s|[-*]\s|\d+\.\s)/);
+                    const markerMatch = lineContent.match(PLUGIN_CONSTANTS.OUTLINER_MARKER_REGEX);
+                    let startCh = 0;
 
-                    let startCh = 0; // Default starting character is 0
-
-                    // If a marker is found, start the selection after it.
                     if (markerMatch) {
                         startCh = markerMatch[0].length;
                     }
 
                     const from = { line: currentLine, ch: startCh };
                     const to = { line: currentLine, ch: lineContent.length };
-
-                    // Set the editor's selection.
                     editor.setSelection(from, to);
                 }
             }
@@ -142,24 +144,16 @@ export default class EditHelperPlugin extends Plugin {
 
         // 5. ADD COMMAND: Toggle auto-center on idle
         this.addCommand({
-            id: 'toggle-auto-center-on-idle',
-            name: 'Toggle auto-center on idle',
+            id: PLUGIN_CONSTANTS.COMMANDS.TOGGLE_AUTO_CENTER.id,
+            name: PLUGIN_CONSTANTS.COMMANDS.TOGGLE_AUTO_CENTER.name,
             callback: () => {
                 this.autoCenterEnabled = !this.autoCenterEnabled;
-                new Notice(`Auto-centering on idle is now ${this.autoCenterEnabled ? 'ON' : 'OFF'}.`);
-                this.resetIdleTimer(); // Reset/clear the timer based on the new state
+                new Notice(PLUGIN_CONSTANTS.NOTICES.AUTO_CENTER_TOGGLED(this.autoCenterEnabled));
+                this.resetIdleTimer();
             }
         });
 
-        // We need to listen to events that indicate user activity to reset the timer.
-        this.registerEvent(this.app.workspace.on('editor-change', this.resetIdleTimer));
-        this.registerEvent(this.app.workspace.on('active-leaf-change', this.resetIdleTimer));
-        this.registerDomEvent(document, 'keydown', this.resetIdleTimer);
-        this.registerDomEvent(document, 'mousedown', this.resetIdleTimer);
-        // Debounce mousemove to avoid excessive timer resets while moving the mouse
-        this.registerDomEvent(document, 'mousemove', debounce(this.resetIdleTimer, this.DEBOUNCE_DELAY_MS, true));
-
-        // Start the timer when the plugin loads
+        this.registerEvent(this.app.workspace.on('editor-change', debounce(this.resetIdleTimer, PLUGIN_CONSTANTS.DEBOUNCE_DELAY_MS, true)));
         this.resetIdleTimer();
     }
 
@@ -170,28 +164,66 @@ export default class EditHelperPlugin extends Plugin {
         }
     }
 
-    // This contains the logic to scroll the active line to the center of the view.
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
+
+    // Scrolls the active line to the center of the view.
     scrollActiveLineToCenter = () => {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-        // Only scroll if there is an active markdown view
         if (view && view.editor) {
             const editor = view.editor;
             const cursor = editor.getCursor();
-            // scrollIntoView with the center option will vertically center the line
             editor.scrollIntoView({ from: cursor, to: cursor }, true);
         }
     };
 
-    // This function resets the idle timer. It's called on user activity.
+    // Resets the idle timer.
     resetIdleTimer = () => {
         if (this.idleTimeout) {
             window.clearTimeout(this.idleTimeout);
         }
-        // Only set a new timer if the feature is enabled.
-        if (this.autoCenterEnabled) {
-            this.idleTimeout = window.setTimeout(this.scrollActiveLineToCenter, this.IDLE_TIMEOUT_MS);
+        if (this.autoCenterEnabled && this.settings.idleTimeoutMs > 0) {
+            this.idleTimeout = window.setTimeout(this.scrollActiveLineToCenter, this.settings.idleTimeoutMs);
         } else {
             this.idleTimeout = null;
         }
     };
+}
+
+// --- SETTINGS TAB CLASS ---
+
+class EditHelperSettingTab extends PluginSettingTab {
+    plugin: EditHelperPlugin;
+
+    constructor(app: App, plugin: EditHelperPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+
+    display(): void {
+        const {containerEl} = this;
+        containerEl.empty();
+
+        new Setting(containerEl)
+            .setName(PLUGIN_CONSTANTS.SETTING_UI.MAIN_HEADING)
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName(PLUGIN_CONSTANTS.SETTING_UI.IDLE_TIMEOUT_NAME)
+            .setDesc(PLUGIN_CONSTANTS.SETTING_UI.IDLE_TIMEOUT_DESC)
+            .addSlider(slider => slider
+                .setLimits(PLUGIN_CONSTANTS.SETTING_UI.SLIDER_MIN, PLUGIN_CONSTANTS.SETTING_UI.SLIDER_MAX, PLUGIN_CONSTANTS.SETTING_UI.SLIDER_STEP)
+                .setValue(this.plugin.settings.idleTimeoutMs)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.idleTimeoutMs = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.resetIdleTimer();
+                }));
+    }
 }

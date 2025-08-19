@@ -1,22 +1,18 @@
 # Edit Helper plugin for obsidian.
 
-## the plugin has a few small editing functionalities such as
+## the plugin has a few small editing functionalities that one can assign keyboard shortcuts to such as
 
-### empty current line content
+### Empty current line content except marker
 
 - Bullets or heading markers remain same in the line.
 
-### clear current line
+### Clear current line for new format
 
-- bullets and heading markers are also removed.
+- removes the current line and moves up the next line.
 
 ### select current line content
 
 - selects the content without bullets or heading markers in the line.
-
-### delete current line 
-
-- removes the current line and moves up the next line.
 
 ### auto-center the current curson location
 
