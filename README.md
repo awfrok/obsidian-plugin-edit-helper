@@ -10,20 +10,20 @@
 
 - clear all the data in the current line to beging a new format.
 
-### select current line content
+### Select current line content
 
 - selects the content without bullets or heading markers in the line.
 
-### auto-center the current curson location
+### Auto-center the current curson location
 
 - scroll the editor to automatically center the cursor.
 - has toggle commnad.
 
-## how to use
+## How to use
 
 - assign keyboard shortcuts for each command.
 
-## support
+## Support
 
 - If you like this project, please support. 
 
