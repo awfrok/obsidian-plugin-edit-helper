@@ -1,6 +1,6 @@
 //
 // last commit: 0.1.2
-// removes 'delete current line' funcitonaliy that is the same with obsidian's 'delete paragraph.'
+// removes 'delete current line' funcitonaliy that is the same with obsidian's 'delete paragraph'.
 // removes all the default hotkey. 
 //
 
